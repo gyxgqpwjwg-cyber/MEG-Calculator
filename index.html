@@ -959,6 +959,83 @@
     transition: opacity 0.3s;
   }
   .ins-saved-badge.show { opacity: 1; }
+  /* GOOD / BETTER / BEST PACKAGES */
+  .pkg-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.6rem;
+  }
+  @media (max-width: 700px) { .pkg-grid { grid-template-columns: 1fr; } }
+  .pkg-card {
+    background: var(--white);
+    border: 2px solid var(--cream-dark);
+    border-radius: 12px;
+    padding: 0.75rem 0.8rem 0.7rem;
+    cursor: pointer;
+    transition: all 0.18s;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .pkg-card:hover {
+    border-color: var(--sage);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(90,143,114,0.18);
+  }
+  .pkg-card.selected {
+    border-color: var(--sage-dark);
+    background: linear-gradient(160deg, #f2f7f3, #e9f1eb);
+    box-shadow: 0 4px 16px rgba(90,143,114,0.25);
+  }
+  .pkg-card.empty {
+    opacity: 0.5;
+    cursor: default;
+    background: var(--cream);
+  }
+  .pkg-card.empty:hover { transform: none; box-shadow: none; border-color: var(--cream-dark); }
+  .pkg-tier {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1rem;
+    color: var(--navy);
+    letter-spacing: 0.01em;
+  }
+  .pkg-card.selected .pkg-tier { color: var(--sage-dark); }
+  .pkg-price {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--sage-dark);
+    line-height: 1.1;
+  }
+  .pkg-price-label {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    font-weight: 700;
+  }
+  .pkg-savings {
+    font-size: 0.7rem;
+    color: var(--sage-dark);
+    font-weight: 600;
+  }
+  .pkg-items {
+    font-size: 0.68rem;
+    color: var(--muted);
+    line-height: 1.35;
+    margin-top: 4px;
+    border-top: 1px solid var(--cream-dark);
+    padding-top: 4px;
+  }
+  .pkg-check {
+    position: absolute;
+    top: 7px; right: 8px;
+    font-size: 0.85rem;
+    color: var(--sage-dark);
+    display: none;
+  }
+  .pkg-card.selected .pkg-check { display: block; }
   /* VSP CODE SETTINGS EDITOR */
   .vspcode-edit-grid {
     display: grid;
@@ -1710,6 +1787,30 @@
               <span id="vsp-allow-lens">✓ Lenses covered in full</span>
               <span id="vsp-allow-calc-note" style="display:none"></span>
             </div>
+          </div>
+        </div>
+
+        <!-- NON-VSP ALLOWANCE BAR — editable retail allowance + overage discount -->
+        <div id="nonvsp-allowance-bar" style="display:none;margin-bottom:0.5rem">
+          <div style="background:linear-gradient(135deg,#5a8f72,#7b9e87);border-radius:10px;padding:0.75rem 1rem 0.85rem">
+            <div style="color:#fff;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.09em;margin-bottom:0.55rem">Plan Frame Benefit <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:0.85">— override per patient if needed</span></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem">
+              <div>
+                <div style="color:rgba(255,255,255,0.9);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">Retail Frame Allowance ($)</div>
+                <input type="number" class="field-input" id="nonvsp-retail-allowance"
+                  placeholder="e.g. 130" min="0" step="0.01"
+                  style="background:rgba(255,255,255,0.18);border-color:rgba(255,255,255,0.35);color:#fff;font-family:'DM Mono',monospace"
+                  oninput="updateNonVspAllowanceNote();calculate()">
+              </div>
+              <div>
+                <div style="color:rgba(255,255,255,0.9);font-size:0.68rem;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:3px">Overage Discount (% off)</div>
+                <input type="number" class="field-input" id="nonvsp-overage-pct"
+                  placeholder="e.g. 20" min="0" max="100" step="1"
+                  style="background:rgba(255,255,255,0.18);border-color:rgba(255,255,255,0.35);color:#fff;font-family:'DM Mono',monospace"
+                  oninput="updateNonVspAllowanceNote();calculate()">
+              </div>
+            </div>
+            <div style="color:rgba(255,255,255,0.75);font-size:0.7rem;margin-top:0.5rem;font-style:italic" id="nonvsp-allow-note"></div>
           </div>
         </div>
 
@@ -2535,13 +2636,20 @@
 
       </div>
 
-      <!-- RIGHT: RESULTS -->
-      <div class="results-panel" id="results-panel">
-        <div class="results-empty" id="results-empty">
-          <div class="icon">🧮</div>
-          <div>Select a plan and products to calculate patient cost</div>
+      <!-- RIGHT: PACKAGES + RESULTS -->
+      <div>
+        <!-- GOOD / BETTER / BEST PACKAGE BAR -->
+        <div id="package-bar" style="display:none;margin-bottom:0.85rem">
+          <div class="pkg-grid" id="pkg-grid"></div>
         </div>
-        <div id="results-content" style="display:none"></div>
+
+        <div class="results-panel" id="results-panel">
+          <div class="results-empty" id="results-empty">
+            <div class="icon">🧮</div>
+            <div>Select a plan and products to calculate patient cost</div>
+          </div>
+          <div id="results-content" style="display:none"></div>
+        </div>
       </div>
 
       <!-- PROMO PANELS — full width, below both columns -->
@@ -2565,6 +2673,7 @@
         <div class="settings-sidebar-item active" onclick="switchSettingsPanel('products', this)">🔬 Manage Products</div>
         <div class="settings-sidebar-item" onclick="switchSettingsPanel('visionplans', this)">🏥 Vision Plans</div>
         <div class="settings-sidebar-item" onclick="switchSettingsPanel('vspcodes', this)">👓 VSP Enhancement Codes</div>
+        <div class="settings-sidebar-item" onclick="switchSettingsPanel('packages', this)">⭐ Good / Better / Best</div>
         <div class="settings-sidebar-item" onclick="switchSettingsPanel('framebrands', this)">🖼️ Frame Brands</div>
         <div class="settings-sidebar-item" onclick="switchSettingsPanel('promos', this)">🏷️ Promos & Discounts</div>
       </div>
@@ -2674,6 +2783,21 @@
         <div class="settings-panel-sub">Build your vision plans, sub-plans, and tiers. Create tiers with copay rules, then assign products to tiers in Manage Products.</div>
         <button class="ins-save-btn" style="margin:0.75rem 0" onclick="addVisionPlan()">+ Add Vision Plan</button>
         <div id="vision-plans-list" style="display:flex;flex-direction:column;gap:0.6rem"></div>
+      </div>
+
+      <!-- PACKAGES PANEL -->
+      <div class="settings-panel" id="settings-packages" style="display:none">
+        <div class="settings-panel-title">⭐ Good / Better / Best Packages</div>
+        <div class="settings-panel-sub">Build three recommended bundles per plan. Once configured, they appear at the top of the calculator with live pricing — staff click one to auto-fill the whole order.</div>
+        <div class="field-group" style="max-width:340px;margin-top:0.9rem">
+          <label class="field-label">Configure packages for plan</label>
+          <div class="select-wrap">
+            <select class="field-select" id="pkg-settings-plan" onchange="renderPackageSettings()">
+              <option value="">— Select a plan —</option>
+            </select>
+          </div>
+        </div>
+        <div id="package-settings-body"></div>
       </div>
 
       <!-- FRAME BRANDS PANEL -->
@@ -3788,12 +3912,109 @@ function switchSettingsPanel(panel, el) {
   document.getElementById('settings-visionplans').style.display = panel === 'visionplans' ? 'block' : 'none';
   document.getElementById('settings-vspcodes').style.display    = panel === 'vspcodes'    ? 'block' : 'none';
   document.getElementById('settings-framebrands').style.display = panel === 'framebrands' ? 'block' : 'none';
+  document.getElementById('settings-packages').style.display    = panel === 'packages'    ? 'block' : 'none';
   document.getElementById('settings-promos').style.display      = panel === 'promos'      ? 'block' : 'none';
   document.getElementById('settings-rules').style.display       = panel === 'rules'       ? 'block' : 'none';
   if (panel === 'promos')      renderPromoList();
   if (panel === 'visionplans') renderVisionPlans();
   if (panel === 'vspcodes')    renderVspCodeSettings();
   if (panel === 'framebrands') renderFrameBrands();
+  if (panel === 'packages')    initPackageSettings();
+}
+
+// ============================================================
+// PACKAGE SETTINGS (Good / Better / Best)
+// ============================================================
+function initPackageSettings() {
+  const sel = document.getElementById('pkg-settings-plan');
+  if (!sel) return;
+  const current = sel.value;
+  // List every sub-plan across all vision plans
+  let opts = '<option value="">— Select a plan —</option>';
+  VISION_PLANS.forEach(plan => {
+    plan.subPlans.forEach(sp => {
+      opts += `<option value="${sp.id}">${plan.name} — ${sp.name}</option>`;
+    });
+  });
+  sel.innerHTML = opts;
+  if (current) sel.value = current;
+  renderPackageSettings();
+}
+
+function renderPackageSettings() {
+  const body = document.getElementById('package-settings-body');
+  const planKey = document.getElementById('pkg-settings-plan')?.value;
+  if (!body) return;
+  if (!planKey) {
+    body.innerHTML = '<div style="color:var(--muted);font-style:italic;font-size:0.85rem;margin-top:0.8rem">Select a plan above to configure its packages.</div>';
+    return;
+  }
+  if (!PLAN_PACKAGES[planKey]) {
+    PLAN_PACKAGES[planKey] = {
+      best:   { lens:'', coating:'', material:'', addons:[] },
+      better: { lens:'', coating:'', material:'', addons:[] },
+      good:   { lens:'', coating:'', material:'', addons:[] },
+    };
+  }
+  const pkgSet = PLAN_PACKAGES[planKey];
+  const carrier = PLAN_TO_CARRIER[planKey] || planKey;
+  const avail = cat => customProducts
+    .filter(p => p.category === cat)
+    .filter(p => !(carrier === 'vsp' && p.nonFormulary));
+
+  const sel = (cat, tierKey, field, current) => `
+    <div style="margin-bottom:6px">
+      <div style="font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:3px">${field === 'addons' ? 'Add-Ons' : field}</div>
+      <select onchange="setPackageField('${planKey}','${tierKey}','${field}',this.value)"
+        style="width:100%;padding:5px 8px;border:1px solid var(--cream-dark);border-radius:6px;font-size:0.8rem;background:#fff">
+        <option value="">— None —</option>
+        ${avail(cat).map(p => `<option value="${p.id}"${p.id===current?' selected':''}>${p.name} ($${(p.retail||0).toFixed(2)})</option>`).join('')}
+      </select>
+    </div>`;
+
+  body.innerHTML = `<div class="pkg-grid" style="margin-top:0.9rem">` + PKG_TIERS.map(t => {
+    const pkg = pkgSet[t.key];
+    const priced = pricePackage(pkg, planKey);
+    return `
+      <div style="background:var(--white);border:1.5px solid var(--cream-dark);border-radius:10px;padding:0.8rem">
+        <div style="font-family:'DM Serif Display',serif;font-size:1rem;color:var(--navy);margin-bottom:0.6rem">${t.label}</div>
+        ${sel('lens',     t.key, 'lens',     pkg.lens)}
+        ${sel('coating',  t.key, 'coating',  pkg.coating)}
+        ${sel('material', t.key, 'material', pkg.material)}
+        <div style="font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin:8px 0 4px">Add-Ons</div>
+        <div style="display:flex;flex-direction:column;gap:3px;max-height:130px;overflow-y:auto;background:var(--cream);border:1px solid var(--cream-dark);border-radius:6px;padding:5px 7px">
+          ${avail('addon').map(a => `
+            <label style="display:flex;align-items:center;gap:5px;font-size:0.76rem;cursor:pointer">
+              <input type="checkbox" value="${a.id}"${(pkg.addons||[]).includes(a.id)?' checked':''}
+                onchange="togglePackageAddon('${planKey}','${t.key}','${a.id}',this.checked)"
+                style="width:13px;height:13px;accent-color:var(--sage-dark)">
+              ${a.name}
+            </label>`).join('') || '<span style="font-size:0.74rem;color:var(--muted);font-style:italic">No add-ons</span>'}
+        </div>
+        <div style="margin-top:8px;padding-top:7px;border-top:1px solid var(--cream-dark);font-size:0.78rem">
+          <div style="color:var(--muted);font-size:0.66rem;text-transform:uppercase;letter-spacing:0.06em">Patient Pays</div>
+          <div style="font-family:'DM Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--sage-dark)">$${priced ? priced.patient.toFixed(2) : '0.00'}</div>
+          ${priced && priced.covered > 0 ? `<div style="font-size:0.7rem;color:var(--sage-dark)">Insurance saves $${priced.covered.toFixed(2)}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('') + `</div>`;
+}
+
+function setPackageField(planKey, tierKey, field, value) {
+  if (!PLAN_PACKAGES[planKey]) return;
+  PLAN_PACKAGES[planKey][tierKey][field] = value;
+  renderPackageSettings();
+  renderPackageBar();
+}
+
+function togglePackageAddon(planKey, tierKey, addonId, checked) {
+  if (!PLAN_PACKAGES[planKey]) return;
+  const pkg = PLAN_PACKAGES[planKey][tierKey];
+  if (!pkg.addons) pkg.addons = [];
+  if (checked) { if (!pkg.addons.includes(addonId)) pkg.addons.push(addonId); }
+  else pkg.addons = pkg.addons.filter(a => a !== addonId);
+  renderPackageSettings();
+  renderPackageBar();
 }
 
 // ============================================================
@@ -4369,10 +4590,10 @@ let customProducts = [
     tiers: { vsp:'$15 copay', eyemed:'$15 copay', davis:'Included ($0)', spectera:'100% Billed Charges', alwayscare:'$15 copay', premier:'Verify with plan' } },
   { id: 'transitions-addon',    name: 'Transitions (Add-On)',        category: 'addon', retail: 150,    uvIncluded: false, blIncluded: false, nonFormulary: false,
     vspCodes: ['PR'],
-    tiers: { vsp:'$15 copay', eyemed:'$15 copay', davis:'Included ($0)', spectera:'100% Billed Charges', alwayscare:'$15 copay', premier:'Full retail' } },
+    tiers: { vsp:'Photochromic/PR ($70)', eyemed:'$15 copay', davis:'Included ($0)', spectera:'100% Billed Charges', alwayscare:'$15 copay', premier:'Full retail' } },
   { id: 'trans-xa-addon',       name: 'Transitions XA (Add-On)',    category: 'addon', retail: 162.50, uvIncluded: false, blIncluded: false, nonFormulary: false,
     vspCodes: ['PR'],
-    tiers: { vsp:'$15 copay', eyemed:'$15 copay', davis:'Included ($0)', spectera:'100% Billed Charges', alwayscare:'$15 copay', premier:'Full retail' } },
+    tiers: { vsp:'Photochromic/PR ($70)', eyemed:'$15 copay', davis:'Included ($0)', spectera:'100% Billed Charges', alwayscare:'$15 copay', premier:'Full retail' } },
   { id: 'polarized',      name: 'Polarized',                  category: 'addon', retail: 100,    uvIncluded: false, blIncluded: false, nonFormulary: false,
     vspCodes: ['DA'],
     tiers: { vsp:'Verify with plan', eyemed:'Verify with plan', davis:'Verify with plan', spectera:'Verify with plan', alwayscare:'Verify with plan', premier:'Verify with plan' } },
@@ -4465,8 +4686,50 @@ let customProducts = [
 // ============================================================
 let VISION_PLANS = [
   { id:'vsp', name:'VSP', subPlans:[
-    { id:'vsp', name:'Signature Plan', type:'copay', tiers:[] },
-    { id:'vsp-choice', name:'Choice Plan', type:'copay', tiers:[] },
+    // Signature Plan — copays per the VSP Signature Lens Enhancements Chart
+    { id:'vsp', name:'Signature Plan', type:'copay', tiers:[
+      { id:'vsp-t-std',    name:'Standard / Covered',        rule:{type:'covered'} },
+      { id:'vsp-t-catk',   name:'Cat K (Standard Prog)',     rule:{type:'copay', amount:50} },
+      { id:'vsp-t-catj',   name:'Cat J (Premium Prog)',      rule:{type:'copay', amount:80} },
+      { id:'vsp-t-catf',   name:'Cat F (Premium Prog)',      rule:{type:'copay', amount:90} },
+      { id:'vsp-t-cato',   name:'Cat O (Custom Prog)',       rule:{type:'copay', amount:120} },
+      { id:'vsp-t-catn',   name:'Cat N (Custom Prog)',       rule:{type:'copay', amount:160} },
+      { id:'vsp-t-arqn',   name:'AR Cat A / QN',             rule:{type:'copay', amount:37} },
+      { id:'vsp-t-arqt',   name:'AR Cat C / QT',             rule:{type:'copay', amount:61} },
+      { id:'vsp-t-arqv',   name:'AR Cat D / QV',             rule:{type:'copay', amount:75} },
+      { id:'vsp-t-photo',  name:'Photochromic / PR',         rule:{type:'copay', amount:70} },
+      { id:'vsp-t-poly',   name:'Polycarbonate (AD/KD)',     rule:{type:'copay', amount:33} },
+      { id:'vsp-t-trivex', name:'Trivex / 1.60 (KB)',        rule:{type:'copay', amount:42} },
+      { id:'vsp-t-hi167',  name:'Hi-Index 1.67 (KH)',        rule:{type:'copay', amount:72} },
+      { id:'vsp-t-hi174',  name:'Hi-Index 1.70+ (KJ)',       rule:{type:'copay', amount:115} },
+      { id:'vsp-t-bsuv',   name:'Backside UV (BV)',          rule:{type:'copay', amount:10} },
+      { id:'vsp-t-lf',     name:'Light Filter (LF)',         rule:{type:'copay', amount:15} },
+      { id:'vsp-t-scr',    name:'Scratch Coat A (QQ)',       rule:{type:'copay', amount:15} },
+      { id:'vsp-t-tint',   name:'Plastic Dyes / Tint (MN)',  rule:{type:'copay', amount:13} },
+      { id:'vsp-t-nf',     name:'Not on VSP formulary',      rule:{type:'covered'} },
+    ]},
+    // Choice Plan — same tier structure, Choice-specific copays
+    { id:'vsp-choice', name:'Choice Plan', type:'copay', tiers:[
+      { id:'vspc-t-std',    name:'Standard / Covered',       rule:{type:'covered'} },
+      { id:'vspc-t-catk',   name:'Cat K (Standard Prog)',    rule:{type:'copay', amount:55} },
+      { id:'vspc-t-catj',   name:'Cat J (Premium Prog)',     rule:{type:'copay', amount:95} },
+      { id:'vspc-t-catf',   name:'Cat F (Premium Prog)',     rule:{type:'copay', amount:105} },
+      { id:'vspc-t-cato',   name:'Cat O (Custom Prog)',      rule:{type:'copay', amount:150} },
+      { id:'vspc-t-catn',   name:'Cat N (Custom Prog)',      rule:{type:'copay', amount:175} },
+      { id:'vspc-t-arqn',   name:'AR Cat A / QN',            rule:{type:'copay', amount:41} },
+      { id:'vspc-t-arqt',   name:'AR Cat C / QT',            rule:{type:'copay', amount:68} },
+      { id:'vspc-t-arqv',   name:'AR Cat D / QV',            rule:{type:'copay', amount:85} },
+      { id:'vspc-t-photo',  name:'Photochromic / PR',        rule:{type:'copay', amount:75} },
+      { id:'vspc-t-poly',   name:'Polycarbonate (AD/KD)',    rule:{type:'copay', amount:35} },
+      { id:'vspc-t-trivex', name:'Trivex / 1.60 (KB)',       rule:{type:'copay', amount:47} },
+      { id:'vspc-t-hi167',  name:'Hi-Index 1.67 (KH)',       rule:{type:'copay', amount:78} },
+      { id:'vspc-t-hi174',  name:'Hi-Index 1.70+ (KJ)',      rule:{type:'copay', amount:125} },
+      { id:'vspc-t-bsuv',   name:'Backside UV (BV)',         rule:{type:'copay', amount:10} },
+      { id:'vspc-t-lf',     name:'Light Filter (LF)',        rule:{type:'copay', amount:15} },
+      { id:'vspc-t-scr',    name:'Scratch Coat A (QQ)',      rule:{type:'copay', amount:17} },
+      { id:'vspc-t-tint',   name:'Plastic Dyes / Tint (MN)', rule:{type:'copay', amount:15} },
+      { id:'vspc-t-nf',     name:'Not on VSP formulary',     rule:{type:'covered'} },
+    ]},
   ]},
   { id:'eyemed', name:'EyeMed', subPlans:[
     { id:'eyemed', name:'Insight Network', type:'copay', tiers:[
@@ -4475,6 +4738,12 @@ let VISION_PLANS = [
       { id:'t-prog1', name:'Progressive Std',   rule:{type:'copay', amount:65} },
       { id:'t-prog4', name:'Progressive Prem 4',rule:{type:'discount', copay:0, pct:20, allowance:120} },
       { id:'t-ar',    name:'Premium AR',        rule:{type:'copay', amount:45} },
+    ]},
+    { id:'eyemed-access', name:'Access Network', type:'copay', tiers:[
+      { id:'ta-std', name:'Standard', rule:{type:'covered'} },
+    ]},
+    { id:'eyemed-select', name:'Select (Premium)', type:'copay', tiers:[
+      { id:'ts-std', name:'Standard', rule:{type:'covered'} },
     ]},
     { id:'eyemed-declining', name:'Declining Balance', type:'declining', tiers:[
       { id:'d-sv',    name:'Single Vision',     applyType:'flat', amount:50 },
@@ -4488,20 +4757,35 @@ let VISION_PLANS = [
     { id:'davis', name:'Standard Plan', type:'copay', tiers:[
       { id:'t-std', name:'Standard', rule:{type:'covered'} },
     ]},
+    { id:'davis-premier', name:'Premier Plan', type:'copay', tiers:[
+      { id:'tp-std', name:'Standard', rule:{type:'covered'} },
+    ]},
   ]},
   { id:'spectera', name:'Spectera', subPlans:[
     { id:'spectera', name:'Standard', type:'copay', tiers:[
       { id:'t-std', name:'Standard', rule:{type:'covered'} },
+    ]},
+    { id:'spectera-enhanced', name:'Enhanced', type:'copay', tiers:[
+      { id:'te-std', name:'Standard', rule:{type:'covered'} },
+    ]},
+    { id:'spectera-m05', name:'M05 / M0922', type:'copay', tiers:[
+      { id:'tm-std', name:'Standard', rule:{type:'covered'} },
     ]},
   ]},
   { id:'alwayscare', name:'AlwaysCare', subPlans:[
     { id:'alwayscare', name:'Standard Plan', type:'copay', tiers:[
       { id:'t-std', name:'Standard', rule:{type:'covered'} },
     ]},
+    { id:'alwayscare-elite', name:'Elite Plan', type:'copay', tiers:[
+      { id:'te-std', name:'Standard', rule:{type:'covered'} },
+    ]},
   ]},
   { id:'superior', name:'Superior Vision', subPlans:[
     { id:'superior', name:'Standard Plan', type:'copay', tiers:[
       { id:'t-std', name:'Standard', rule:{type:'covered'} },
+    ]},
+    { id:'superior-plus', name:'Plus Plan', type:'copay', tiers:[
+      { id:'tp-std', name:'Standard', rule:{type:'covered'} },
     ]},
   ]},
 ];
@@ -4558,14 +4842,30 @@ function parseLegacyTierLabel(label) {
   return { name: label.slice(0, 40), rule: { type: 'covered' } }; // fallback — verify manually
 }
 
-// Find or create a tier matching this parsed label under a sub-plan; returns tier id
+// Sub-plans with explicitly curated tiers — never auto-create tiers in these,
+// only match products to the existing tier list.
+const CURATED_SUBPLANS = new Set(['vsp', 'vsp-choice']);
+
+// Find (or create, when allowed) a tier matching this parsed label; returns tier id
 function findOrCreateTier(subPlan, parsed) {
+  // Exact match on type + amount + name
   let existing = subPlan.tiers.find(t =>
     t.rule && t.rule.type === parsed.rule.type &&
     (parsed.rule.type !== 'copay' || t.rule.amount === parsed.rule.amount) &&
     t.name === parsed.name
   );
   if (existing) return existing.id;
+
+  // Looser match: same type + same dollar amount (name wording may differ)
+  existing = subPlan.tiers.find(t =>
+    t.rule && t.rule.type === parsed.rule.type &&
+    (parsed.rule.type !== 'copay' || t.rule.amount === parsed.rule.amount)
+  );
+  if (existing) return existing.id;
+
+  // Curated sub-plans stay clean — don't invent new tiers from legacy text
+  if (CURATED_SUBPLANS.has(subPlan.id)) return null;
+
   const tier = { id: uid('tier'), name: parsed.name, rule: parsed.rule };
   subPlan.tiers.push(tier);
   return tier.id;
@@ -4589,7 +4889,7 @@ function migrateLegacyTiers() {
       const parsed = parseLegacyTierLabel(label);
       if (!parsed) return;
       const tierId = findOrCreateTier(subPlan, parsed);
-      p.tierAssignments[subPlanId] = tierId;
+      if (tierId) p.tierAssignments[subPlanId] = tierId;
     });
   });
 }
@@ -4677,6 +4977,37 @@ function toggleOwnFrame() {
   }
   calculate();
 }
+
+// ============================================================
+// GOOD / BETTER / BEST PACKAGES — per sub-plan product bundles
+// Shape: PLAN_PACKAGES[subPlanId] = {
+//   best:   { lens, coating, material, addons: [] },
+//   better: { ... },
+//   good:   { ... }
+// }
+// ============================================================
+let PLAN_PACKAGES = {
+  // Sensible starting point for VSP Signature
+  'vsp': {
+    best:   { lens:'shamir-ai',      coating:'sapphire-hr',     material:'poly',   addons:['backside-uv'] },
+    better: { lens:'spectrum-plus',  coating:'glacier-plus',    material:'poly',   addons:['backside-uv'] },
+    good:   { lens:'shoreview-dig',  coating:'reflection-free', material:'',       addons:[] },
+  },
+  'vsp-choice': {
+    best:   { lens:'shamir-ai',      coating:'sapphire-hr',     material:'poly',   addons:['backside-uv'] },
+    better: { lens:'spectrum-plus',  coating:'glacier-plus',    material:'poly',   addons:['backside-uv'] },
+    good:   { lens:'shoreview-dig',  coating:'reflection-free', material:'',       addons:[] },
+  },
+};
+
+const PKG_TIERS = [
+  { key:'best',   label:'Best'   },
+  { key:'better', label:'Better' },
+  { key:'good',   label:'Good'   },
+];
+
+// Which package (if any) is currently applied in the calculator
+let _selectedPackage = null;
 
 let promos = [
   { id: 'pair50', name: 'Pair 50 Lens Promo', active: true,
@@ -5233,7 +5564,7 @@ const PLAN_RULES = {
   vsp: {
     // VSP Signature Plan — Lens Enhancements Chart eff. Sept 1, 2024 (rev. Jan 1, 2026)
     frameAllowanceRetail: 150,
-    frameAllowanceWholesale: 109,
+    frameAllowanceWholesale: 57,
     lens: {
       // Standard lenses — covered in full
       'sv-standard':    { mode: 'free',  tier: 'Covered — $0' },
@@ -5337,6 +5668,7 @@ const PLAN_RULES = {
 
   davis: {
     frameAllowanceRetail: 130,
+    frameOveragePct: 0.80,   // 20% off overage
     davisCollectionFree: true,
     frameNonCollectionCopay: 25,
     lens: {
@@ -5388,8 +5720,8 @@ const PLAN_RULES = {
   },
 
   spectera: {
-    frameAllowanceRetail: 300,
-    frameOveragePct: 0.70,
+    frameAllowanceRetail: 130,
+    frameOveragePct: 0.70,   // 30% off overage
     nonFormularyCopay: 95,
     // NF filing thresholds per P-code: if patient copay exceeds threshold → P6 NF is cheaper at $95
     // P1: Shoreview Trad (file as P1, $0 copay)
@@ -5442,7 +5774,8 @@ const PLAN_RULES = {
   },
 
   alwayscare: {
-    frameAllowanceRetail: 130,
+    frameAllowanceRetail: 120,
+    frameOveragePct: 0.80,   // 20% off overage
     lens: {
       'sv-standard':    { mode: 'copay', copay: 20,     tier: 'Standard' },
       'bifocal':        { mode: 'copay', copay: 20,     tier: 'Standard' },
@@ -5539,7 +5872,7 @@ const PLAN_RULES = {
     // VSP Choice Plan — Lens Enhancements Chart eff. Sept 1, 2024 (rev. Jan 1, 2025)
     // Copay = listed copay OR 80% U&C, whichever is lower. ALWAYS verify with auth form.
     frameAllowanceRetail: 150,
-    frameAllowanceWholesale: 109,
+    frameAllowanceWholesale: 57,
     lens: {
       'sv-standard':    { mode: 'free',  tier: 'Standard — $0' },
       'bifocal':        { mode: 'free',  tier: 'Standard — $0' },
@@ -5584,6 +5917,10 @@ const PLAN_RULES = {
       'blue-light':  { mode: 'copay', copay: 15, tier: 'Light Filter (LF) — $15' },
       'scratch':     { mode: 'copay', copay: 17, tier: 'Scratch A (QQ) — $17' },
       'tint':        { mode: 'copay', copay: 15, tier: 'Plastic Dyes (MN) — $15' },
+      'transitions-addon': { mode: 'copay', copay: 75, tier: 'Photochromic (PR) — $75' },
+      'trans-xa-addon':    { mode: 'copay', copay: 75, tier: 'Photochromic (PR) — $75' },
+      'polarized':   { mode: 'copay', copay: 57, tier: 'Polarized (DA) — $57' },
+      'mirror':      { mode: 'copay', copay: 49, tier: 'Mirror (QP) — $49' },
     },
     notes: '⚠️ VSP Choice: Copay = listed OR 80% U&C, whichever is lower. ALWAYS verify with patient auth form. Cat N $175, Cat O $150, Cat F $105, Cat J $95, Cat K $55. AR: QN $41, QT $68, QV $85. Transitions $75. Poly $35, Trivex/1.60 $47, 1.67 $78, 1.70+ $125.'
   },
@@ -5591,7 +5928,7 @@ const PLAN_RULES = {
   // ── VSP Individual ──────────────────────────────────────────────────────────
   'vsp-individual': {
     frameAllowanceRetail: 150,
-    frameAllowanceWholesale: 109,
+    frameAllowanceWholesale: 57,
     lens: {
       'sv-standard':    { mode: 'free', tier: 'Covered' },
       'bifocal':        { mode: 'free', tier: 'Covered' },
@@ -5747,7 +6084,8 @@ const PLAN_RULES = {
 
   // ── Davis Premier ────────────────────────────────────────────────────────────
   'davis-premier': {
-    frameAllowanceRetail: 200,
+    frameAllowanceRetail: 150,
+    frameOveragePct: 0.80,   // 20% off overage
     davisCollectionFree: true,
     frameNonCollectionCopay: 25,
     lens: {
@@ -5803,7 +6141,8 @@ const PLAN_RULES = {
 
   // ── Spectera Enhanced ────────────────────────────────────────────────────────
   'spectera-enhanced': {
-    frameAllowanceRetail: 200,
+    frameAllowanceRetail: 150,
+    frameOveragePct: 0.70,   // 30% off overage
     nonFormularyCopay: 95,
     lens: {
       'sv-standard':    { mode: 'free',  tier: 'Standard — $0' },
@@ -5856,8 +6195,8 @@ const PLAN_RULES = {
 
   // ── Spectera M05 — already defined as "spectera" above, alias it ─────────────
   'spectera-m05': {
-    frameAllowanceRetail: 300,
-    frameOveragePct: 0.70,
+    frameAllowanceRetail: 150,
+    frameOveragePct: 0.70,   // 30% off overage
     nonFormularyCopay: 95,
     lens: {
       'sv-standard':    { mode: 'free',  tier: 'Standard' },
@@ -5910,7 +6249,7 @@ const PLAN_RULES = {
 
   // ── AlwaysCare Elite ─────────────────────────────────────────────────────────
   'alwayscare-elite': {
-    frameAllowanceRetail: 200,
+    frameAllowanceRetail: 150,
     lens: {
       'sv-standard':    { mode: 'copay', copay: 10, tier: 'Materials copay — $10' },
       'bifocal':        { mode: 'copay', copay: 10, tier: 'Materials copay — $10' },
@@ -5962,8 +6301,8 @@ const PLAN_RULES = {
 
   // ── Superior Vision ────────────────────────────────────────────────────────
   'superior-plus': {
-    frameAllowanceRetail: 200,
-    frameOveragePct: 0.80,
+    frameAllowanceRetail: 150,
+    frameOveragePct: 0.80,   // 20% off overage
     lens: {
       'sv-standard':    { mode: 'free',  tier: 'Basic — $0' },
       'bifocal':        { mode: 'free',  tier: 'Basic — $0' },
@@ -6010,8 +6349,8 @@ const PLAN_RULES = {
   },
 
   superior: {
-    frameAllowanceRetail: 150,
-    frameOveragePct: 0.80, // patient pays 80% (20% off) of balance over allowance
+    frameAllowanceRetail: 120,
+    frameOveragePct: 0.80,   // 20% off overage
     lens: {
       'sv-standard':    { mode: 'free',   tier: 'Basic — $0' },
       'bifocal':        { mode: 'free',   tier: 'Basic — $0' },
@@ -6114,6 +6453,9 @@ customProducts.forEach(p => injectCustomProduct(p));
 migrateLegacyTiers(); // one-time: convert old free-text tiers into Vision Plans tiers
 
 function onCarrierChange() {
+  _selectedPackage = null;
+  const pkgBar = document.getElementById('package-bar');
+  if (pkgBar) pkgBar.style.display = 'none';
   const carrier = document.getElementById('calc-carrier').value;
   const subplanGroup = document.getElementById('subplan-group');
   const planSel = document.getElementById('calc-plan');
@@ -6177,6 +6519,7 @@ function onPlanChange() {
   document.getElementById('frame-section').style.display         = (hasFrame && !isCustom && !isVSP) ? 'flex'  : 'none';
   document.getElementById('own-frame-group-nonvsp').style.display = (hasFrame && !isCustom && !isVSP) ? 'block' : 'none';
   document.getElementById('frame-wholesale-group').style.display = 'none'; // legacy — replaced by VSP inputs below
+  document.getElementById('nonvsp-allowance-bar').style.display  = (hasFrame && !isCustom && !isVSP) ? 'block' : 'none';
 
   // VSP allowance info bar
   document.getElementById('vsp-allowance-bar').style.display     = (isVSP && hasFrame) ? 'block' : 'none';
@@ -6189,11 +6532,27 @@ function onPlanChange() {
   // Clear stale hints/values BEFORE pre-filling — order matters here
   clearRetailHints();
 
+  // Pre-fill non-VSP retail allowance / overage discount from PLAN_RULES (after clear)
+  if (hasFrame && !isCustom && !isVSP && plan) {
+    const prNv = PLAN_RULES[plan] || {};
+    const retailAllowNv = prNv.frameAllowanceRetail;
+    const pctOffNv = prNv.frameOveragePct !== undefined ? Math.round((1 - prNv.frameOveragePct) * 100) : '';
+    const retInputNv = document.getElementById('nonvsp-retail-allowance');
+    const pctInputNv = document.getElementById('nonvsp-overage-pct');
+    if (retInputNv) retInputNv.value = retailAllowNv !== undefined ? retailAllowNv : '';
+    if (pctInputNv) pctInputNv.value = pctOffNv;
+    updateNonVspAllowanceNote();
+  }
+
+  // Reset package selection when the plan changes, then re-render the bar
+  _selectedPackage = null;
+  renderPackageBar();
+
   // Pre-fill VSP editable allowance inputs from PLAN_RULES (after clear, so values stick)
   if (isVSP && plan) {
     const pr = PLAN_RULES[plan] || {};
     const retailAllow = pr.frameAllowanceRetail    || 150;
-    const wfaAllow    = pr.frameAllowanceWholesale || 109;
+    const wfaAllow    = pr.frameAllowanceWholesale || 57;
     const wfaInput      = document.getElementById('vsp-wfa-allowance');
     const retInput      = document.getElementById('vsp-retail-allowance');
     const planRetInput  = document.getElementById('vsp-plan-retail-allowance');
@@ -6240,6 +6599,20 @@ function updateRetailHint(selectId, catalog) {
 
 // ── VSP Allowance bar: WFA × multiplier → max retail allowance ────────────────
 // Highlight required VSP allowance fields when empty
+function updateNonVspAllowanceNote() {
+  const allow = parseFloat(document.getElementById('nonvsp-retail-allowance')?.value);
+  const pct   = parseFloat(document.getElementById('nonvsp-overage-pct')?.value);
+  const note  = document.getElementById('nonvsp-allow-note');
+  if (!note) return;
+  if (!isNaN(allow) && !isNaN(pct)) {
+    note.textContent = `Retail allowance $${allow.toFixed(2)} · patient pays ${Math.round(100-pct)}% of any overage (${pct}% off)`;
+  } else if (!isNaN(allow)) {
+    note.textContent = `Retail allowance $${allow.toFixed(2)} · no overage discount set — full overage charged`;
+  } else {
+    note.textContent = '';
+  }
+}
+
 function markVspAllowancesRequired() {
   ['vsp-wfa-allowance','vsp-plan-retail-allowance'].forEach(id => {
     const el = document.getElementById(id);
@@ -6357,6 +6730,13 @@ function clearRetailHints() {
   });
   const brandSel = document.getElementById('vsp-frame-brand');
   if (brandSel) brandSel.value = '';
+  // Clear non-VSP allowance bar too
+  ['nonvsp-retail-allowance','nonvsp-overage-pct'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  const nonvspNote = document.getElementById('nonvsp-allow-note');
+  if (nonvspNote) nonvspNote.textContent = '';
 }
 
 // ============================================================
@@ -6771,6 +7151,186 @@ function fmt(n) {
   return '$' + n.toFixed(2);
 }
 
+// ============================================================
+// GOOD / BETTER / BEST PACKAGE BAR
+// ============================================================
+
+// Price a single product under a given plan, returning {patient, retail}
+function pricePackageItem(productId, category, planKey) {
+  if (!productId) return { patient: 0, retail: 0 };
+  const prod = customProducts.find(p => p.id === productId);
+  if (!prod) return { patient: 0, retail: 0 };
+  const retail = prod.retail || 0;
+
+  const rules = {
+    lens:     buildRulesObj(planKey, 'lens'),
+    coating:  buildRulesObj(planKey, 'coating'),
+    material: buildRulesObj(planKey, 'material'),
+    addon:    buildRulesObj(planKey, 'addon'),
+  };
+  const rule = rules[category] ? rules[category][productId] : null;
+  const item = { id: productId, label: prod.name, retail };
+
+  try {
+    const res = getItemCost(item, rule, rules, category);
+    if (res.mode === 'note') return { patient: 0, retail, note: res.note };
+    return { patient: res.cost || 0, retail };
+  } catch (e) {
+    return { patient: 0, retail };
+  }
+}
+
+// Total up a package under the selected plan
+function pricePackage(pkg, planKey) {
+  if (!pkg) return null;
+  let patient = 0, retail = 0;
+  const names = [];
+
+  const add = (id, cat) => {
+    if (!id) return;
+    const prod = customProducts.find(p => p.id === id);
+    if (!prod) return;
+    // Skip products not on this carrier's formulary
+    const carrier = PLAN_TO_CARRIER[planKey] || planKey;
+    if (carrier === 'vsp' && prod.nonFormulary) return;
+    const r = pricePackageItem(id, cat, planKey);
+    patient += r.patient;
+    retail  += r.retail;
+    names.push(prod.name);
+  };
+
+  add(pkg.lens, 'lens');
+  add(pkg.coating, 'coating');
+  add(pkg.material, 'material');
+  (pkg.addons || []).forEach(a => add(a, 'addon'));
+
+  return {
+    patient: +patient.toFixed(2),
+    retail:  +retail.toFixed(2),
+    covered: +Math.max(0, retail - patient).toFixed(2),
+    names,
+  };
+}
+
+function renderPackageBar() {
+  const bar  = document.getElementById('package-bar');
+  const grid = document.getElementById('pkg-grid');
+  if (!bar || !grid) return;
+
+  const planKey = document.getElementById('calc-plan')?.value;
+  // Nothing shows until a plan is selected
+  if (!planKey) { bar.style.display = 'none'; grid.innerHTML = ''; return; }
+
+  const pkgSet = PLAN_PACKAGES[planKey];
+  if (!pkgSet) {
+    bar.style.display = 'block';
+    grid.innerHTML = PKG_TIERS.map(t => `
+      <div class="pkg-card empty">
+        <div class="pkg-tier">${t.label}</div>
+        <div style="font-size:0.7rem;color:var(--muted);font-style:italic;margin-top:4px">
+          Not set up for this plan — configure in Settings → Packages
+        </div>
+      </div>`).join('');
+    return;
+  }
+
+  bar.style.display = 'block';
+  grid.innerHTML = PKG_TIERS.map(t => {
+    const pkg = pkgSet[t.key];
+    const priced = pricePackage(pkg, planKey);
+    if (!pkg || !priced || !priced.names.length) {
+      return `<div class="pkg-card empty">
+        <div class="pkg-tier">${t.label}</div>
+        <div style="font-size:0.7rem;color:var(--muted);font-style:italic;margin-top:4px">Not configured</div>
+      </div>`;
+    }
+    const isSel = _selectedPackage === t.key;
+    return `
+      <div class="pkg-card${isSel?' selected':''}" onclick="selectPackage('${t.key}')">
+        <span class="pkg-check">✓</span>
+        <div class="pkg-tier">${t.label}</div>
+        <div class="pkg-price-label">Patient Pays</div>
+        <div class="pkg-price">$${priced.patient.toFixed(2)}</div>
+        ${priced.covered > 0 ? `<div class="pkg-savings">Insurance saves $${priced.covered.toFixed(2)}</div>` : ''}
+        <div class="pkg-items">${priced.names.join(' · ')}</div>
+      </div>`;
+  }).join('');
+}
+
+// Apply a package's products to the calculator inputs
+function selectPackage(tierKey) {
+  const planKey = document.getElementById('calc-plan')?.value;
+  if (!planKey) return;
+  const pkgSet = PLAN_PACKAGES[planKey];
+  if (!pkgSet) return;
+
+  // Clicking the already-selected package clears it
+  if (_selectedPackage === tierKey) {
+    _selectedPackage = null;
+    clearPackageSelections();
+    renderPackageBar();
+    calculate();
+    return;
+  }
+
+  const pkg = pkgSet[tierKey];
+  if (!pkg) return;
+
+  // Clear whatever the previous package put in place
+  clearPackageSelections();
+
+  const carrier = PLAN_TO_CARRIER[planKey] || planKey;
+  const allowed = id => {
+    if (!id) return false;
+    const prod = customProducts.find(p => p.id === id);
+    if (!prod) return false;
+    if (carrier === 'vsp' && prod.nonFormulary) return false;
+    return true;
+  };
+
+  if (allowed(pkg.lens))     document.getElementById('calc-lens').value     = pkg.lens;
+  if (allowed(pkg.coating))  document.getElementById('calc-coating').value  = pkg.coating;
+  if (allowed(pkg.material)) document.getElementById('calc-material').value = pkg.material;
+
+  // Fill add-on slots in order, growing the list if the package needs more
+  const addons = (pkg.addons || []).filter(allowed);
+  addons.forEach((addonId, i) => {
+    while (ADDON_SLOT_IDS.length <= i) addExtraAddonSlot();
+    const el = document.getElementById(ADDON_SLOT_IDS[i]);
+    if (el) el.value = addonId;
+  });
+
+  _selectedPackage = tierKey;
+
+  // Refresh dependent UI, then recalculate
+  updateRetailHint('calc-lens', LENSES);
+  updateRetailHint('calc-coating', COATINGS);
+  updateRetailHint('calc-material', MATERIALS);
+  ADDON_SLOT_IDS.forEach(id => updateRetailHint(id, ADDONS));
+  applyLensIncompatibilities();
+  syncAddonOptions();
+  renderPackageBar();
+  calculate();
+}
+
+// Clear lens/coating/material/add-on selections (used when switching packages)
+function clearPackageSelections() {
+  ['calc-lens','calc-coating','calc-material'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  ADDON_SLOT_IDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.value = ''; delete el.dataset.autoLinked; }
+  });
+  ['calc-lens','calc-coating','calc-material', ...ADDON_SLOT_IDS].forEach(id => {
+    const h = document.getElementById('hint-' + id);
+    if (h) h.textContent = '';
+    const s = document.getElementById('sub-' + id);
+    if (s) s.style.display = 'none';
+  });
+}
+
 function calculate() {
   const planKey = document.getElementById('calc-plan').value;
   if (!planKey) {
@@ -6894,14 +7454,28 @@ function calculate() {
     }
   } else {
     if (frameRetail > 0) {
-      const allowance = rules.frameAllowanceRetail || 130;
+      // Read from the editable calculator inputs first; fall back to PLAN_RULES defaults
+      const allowInput = document.getElementById('nonvsp-retail-allowance');
+      const pctInput    = document.getElementById('nonvsp-overage-pct');
+      const allowRaw    = allowInput?.value?.trim();
+      const pctRaw      = pctInput?.value?.trim();
+
+      const allowance = (allowRaw !== '' && !isNaN(parseFloat(allowRaw)))
+        ? parseFloat(allowRaw)
+        : (rules.frameAllowanceRetail || 130);
+
+      // pctRaw is "% off"; convert to the fraction the patient actually pays
+      const patientPaysFraction = (pctRaw !== '' && !isNaN(parseFloat(pctRaw)))
+        ? (1 - parseFloat(pctRaw) / 100)
+        : rules.frameOveragePct;
+
       const overage = Math.max(0, frameRetail - allowance);
       let patientFrame = overage;
       let overageNote = '';
       if (overage > 0) {
-        if (rules.frameOveragePct) {
-          patientFrame = +(overage * rules.frameOveragePct).toFixed(2);
-          overageNote = `Patient pays ${Math.round(rules.frameOveragePct*100)}% of $${overage.toFixed(2)} overage`;
+        if (patientPaysFraction !== undefined) {
+          patientFrame = +(overage * patientPaysFraction).toFixed(2);
+          overageNote = `Patient pays ${Math.round(patientPaysFraction*100)}% of $${overage.toFixed(2)} overage (${Math.round((1-patientPaysFraction)*100)}% off)`;
         } else if (rules.frameOverageNote) {
           overageNote = rules.frameOverageNote;
         } else {
@@ -7060,7 +7634,7 @@ function calculate() {
   `;
 
   if (frameRows.length > 0) {
-    const show50PctBtn = frameRetail === 150;
+    const show50PctBtn = false; // removed per practice policy
     html += `<div class="result-section"><div class="result-section-title">🖼 Frame</div>`;
     frameRows.forEach(r => {
       const frameAmtColor = r.amount > 0 ? 'var(--sage-dark)' : 'var(--muted)';
@@ -7166,7 +7740,7 @@ function calculate() {
         </div>
         <div class="checkout-row">
           <div class="checkout-label">Insurance Covers</div>
-          <div class="checkout-val green" id="summary-insurance">${fmt(insuranceCovers)}</div>
+          <div class="checkout-val green" id="summary-insurance">−${fmt(insuranceCovers)}</div>
         </div>
         <div class="checkout-row" id="summary-savings-row" style="display:${savings>0?'flex':'none'}">
           <div class="checkout-label">Additional Savings</div>
@@ -7816,7 +8390,7 @@ function renderDecliningResults(carrierLabel, planLabel, el, empty) {
       <div class="checkout-title">💳 Order Summary</div>
       <div class="checkout-row">
         <div class="checkout-label">Insurance Covers</div>
-        <div class="checkout-val green">${fmtc(insCovers)}</div>
+        <div class="checkout-val green">−${fmtc(insCovers)}</div>
       </div>
       <div class="checkout-divider"></div>
       <div class="checkout-row total">
@@ -8236,8 +8810,8 @@ function recomputeGrandTotalWithCoverage() {
   const insEl    = document.getElementById('summary-insurance');
   const retailEl = document.getElementById('summary-retail');
   if (insEl && retailEl) {
-    const retail = parseFloat(retailEl.textContent.replace(/[^0-9.]/g,'')) || 0;
-    insEl.textContent = fmt(Math.max(0, retail - Math.max(0, adjusted)));
+    const retail = parseFloat(retailEl.textContent.replace(/[^0-9.]/g,'')) || 0; // minus/currency stripped
+    insEl.textContent = '−' + fmt(Math.max(0, retail - Math.max(0, adjusted)));
   }
 }
 
@@ -8326,8 +8900,8 @@ function updateGrandTotalWithDiscounts() {
   const retailEl = document.getElementById('summary-retail');
   const insEl    = document.getElementById('summary-insurance');
   if (retailEl && insEl) {
-    const retail = parseFloat(retailEl.textContent.replace(/[^0-9.]/g,'')) || 0;
-    insEl.textContent = fmt(Math.max(0, retail - newTotal));
+    const retail = parseFloat(retailEl.textContent.replace(/[^0-9.]/g,'')) || 0; // minus/currency stripped
+    insEl.textContent = '−' + fmt(Math.max(0, retail - newTotal));
   }
 }
 
@@ -8415,13 +8989,33 @@ function getInsuranceCopayFields() {
 // ============================================================
 function uid(prefix) { return prefix + '-' + Math.random().toString(36).slice(2,8); }
 
+// Tracks which plan blocks are expanded so re-renders don't collapse them
+let _openVisionPlans = new Set();
+
+function toggleVisionPlanOpen(planId) {
+  if (_openVisionPlans.has(planId)) _openVisionPlans.delete(planId);
+  else _openVisionPlans.add(planId);
+  const body = document.getElementById('vp-body-' + planId);
+  const chev = document.getElementById('vp-chev-' + planId);
+  if (body) body.classList.toggle('open', _openVisionPlans.has(planId));
+  if (chev) chev.classList.toggle('open', _openVisionPlans.has(planId));
+}
+
 function renderVisionPlans() {
   const el = document.getElementById('vision-plans-list');
   if (!el) return;
-  el.innerHTML = VISION_PLANS.map(plan => `
+  el.innerHTML = VISION_PLANS.map(plan => {
+    const isOpen = _openVisionPlans.has(plan.id);
+    return `
     <div class="ins-carrier-block">
       <div class="ins-carrier-header">
-        <div class="ins-carrier-name" style="flex:1" onclick="this.closest('.ins-carrier-header').nextElementSibling.classList.toggle('open');this.parentElement.querySelector('.ins-carrier-chevron').classList.toggle('open')">
+        <button onclick="event.stopPropagation();deleteVisionPlan('${plan.id}')"
+          style="background:none;border:none;color:#b91c1c;cursor:pointer;font-size:0.9rem;padding:0 4px 0 0;flex-shrink:0"
+          title="Delete this vision plan">🗑</button>
+        <button onclick="event.stopPropagation();duplicateVisionPlan('${plan.id}')"
+          style="background:none;border:none;color:var(--sage-dark);cursor:pointer;font-size:0.9rem;padding:0 10px 0 0;flex-shrink:0"
+          title="Duplicate this vision plan">⧉</button>
+        <div class="ins-carrier-name" style="flex:1" onclick="toggleVisionPlanOpen('${plan.id}')">
           <span>🏥</span>
           <input type="text" value="${plan.name}" onclick="event.stopPropagation()"
             onchange="renameVisionPlan('${plan.id}', this.value)"
@@ -8430,15 +9024,14 @@ function renderVisionPlans() {
             onblur="this.style.borderColor='transparent';this.style.background='transparent'">
           <span style="font-size:0.72rem;color:var(--muted);font-weight:400">${plan.subPlans.length} sub-plan${plan.subPlans.length!==1?'s':''}</span>
         </div>
-        <button onclick="event.stopPropagation();deleteVisionPlan('${plan.id}')" style="background:none;border:none;color:#b91c1c;cursor:pointer;font-size:0.9rem;padding:0 8px" title="Delete plan">🗑</button>
-        <span class="ins-carrier-chevron">▼</span>
+        <span class="ins-carrier-chevron${isOpen?' open':''}" id="vp-chev-${plan.id}" onclick="toggleVisionPlanOpen('${plan.id}')">▼</span>
       </div>
-      <div class="ins-carrier-body">
+      <div class="ins-carrier-body${isOpen?' open':''}" id="vp-body-${plan.id}">
         <button class="ins-save-btn" style="font-size:0.78rem;padding:5px 12px;margin-bottom:0.6rem" onclick="addSubPlan('${plan.id}')">+ Add Sub-Plan</button>
         ${plan.subPlans.map(sp => renderSubPlan(plan.id, sp)).join('')}
       </div>
-    </div>
-  `).join('') || '<div style="color:var(--muted);font-style:italic;font-size:0.85rem">No vision plans yet. Click "+ Add Vision Plan" to start.</div>';
+    </div>`;
+  }).join('') || '<div style="color:var(--muted);font-style:italic;font-size:0.85rem">No vision plans yet. Click "+ Add Vision Plan" to start.</div>';
 }
 
 function renderSubPlan(planId, sp) {
@@ -8448,6 +9041,7 @@ function renderSubPlan(planId, sp) {
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:0.5rem">
         <input type="text" value="${sp.name}" onchange="renameSubPlan('${planId}','${sp.id}',this.value)"
           style="font-weight:600;font-size:0.85rem;color:var(--navy);border:1px solid var(--cream-dark);background:#fff;padding:4px 8px;border-radius:6px;flex:1">
+        <button onclick="duplicateSubPlan('${planId}','${sp.id}')" style="background:none;border:none;color:var(--sage-dark);cursor:pointer;font-size:0.85rem" title="Duplicate sub-plan">⧉</button>
         <button onclick="deleteSubPlan('${planId}','${sp.id}')" style="background:none;border:none;color:#b91c1c;cursor:pointer;font-size:0.85rem" title="Delete sub-plan">🗑</button>
       </div>
       <div style="display:flex;gap:1rem;margin-bottom:0.6rem;font-size:0.8rem">
@@ -8460,6 +9054,7 @@ function renderSubPlan(planId, sp) {
           Declining Balance Plan
         </label>
       </div>
+      ${renderFrameAllowanceFields(sp.id)}
       <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--sage-dark);margin-bottom:5px">Tiers</div>
       <div style="display:flex;flex-direction:column;gap:5px">
         ${sp.tiers.map(t => isDeclining ? renderDecliningTier(planId, sp.id, t) : renderCopayTier(planId, sp.id, t)).join('')}
@@ -8467,6 +9062,77 @@ function renderSubPlan(planId, sp) {
       <button class="ins-save-btn" style="font-size:0.74rem;padding:4px 10px;margin-top:0.5rem" onclick="addTier('${planId}','${sp.id}')">+ Add Tier</button>
     </div>
   `;
+}
+
+// Editable frame allowance / overage discount / WFA for sub-plans that use them.
+// Values live in PLAN_RULES so the calculator picks them up immediately.
+function renderFrameAllowanceFields(subPlanId) {
+  const r = PLAN_RULES[subPlanId];
+  if (!r) return ''; // sub-plan has no PLAN_RULES entry (custom-created) — nothing to edit
+  const hasAny = r.frameAllowanceRetail !== undefined
+              || r.frameAllowanceWholesale !== undefined
+              || r.frameOveragePct !== undefined;
+  if (!hasAny) return '';
+
+  const retail = r.frameAllowanceRetail ?? '';
+  const wfa    = r.frameAllowanceWholesale;
+  const pctOff = r.frameOveragePct !== undefined
+    ? Math.round((1 - r.frameOveragePct) * 100)  // stored as what patient pays
+    : '';
+
+  return `
+    <div style="background:#fff;border:1px solid var(--cream-dark);border-radius:7px;padding:8px 10px;margin-bottom:0.6rem">
+      <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--sage-dark);margin-bottom:6px">Frame Benefit</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.5rem">
+        <div>
+          <div style="font-size:0.68rem;color:var(--muted);margin-bottom:3px">Retail Frame Allowance ($)</div>
+          <input type="number" min="0" step="1" value="${retail}"
+            onchange="setPlanFrameField('${subPlanId}','frameAllowanceRetail',this.value)"
+            style="width:100%;padding:5px 8px;border:1px solid var(--cream-dark);border-radius:5px;font-family:'DM Mono',monospace;font-size:0.82rem">
+        </div>
+        ${wfa !== undefined ? `
+        <div>
+          <div style="font-size:0.68rem;color:var(--muted);margin-bottom:3px">WFA / Wholesale ($)</div>
+          <input type="number" min="0" step="1" value="${wfa}"
+            onchange="setPlanFrameField('${subPlanId}','frameAllowanceWholesale',this.value)"
+            style="width:100%;padding:5px 8px;border:1px solid var(--cream-dark);border-radius:5px;font-family:'DM Mono',monospace;font-size:0.82rem">
+        </div>` : ''}
+        <div>
+          <div style="font-size:0.68rem;color:var(--muted);margin-bottom:3px">Overage Discount (% off)</div>
+          <input type="number" min="0" max="100" step="1" value="${pctOff}"
+            placeholder="0"
+            onchange="setPlanFrameField('${subPlanId}','frameOveragePct',this.value)"
+            style="width:100%;padding:5px 8px;border:1px solid var(--cream-dark);border-radius:5px;font-family:'DM Mono',monospace;font-size:0.82rem">
+        </div>
+      </div>
+      <div style="font-size:0.68rem;color:var(--muted);font-style:italic;margin-top:5px">
+        Patient pays ${pctOff === '' ? '100' : (100 - pctOff)}% of any amount above the retail allowance.
+      </div>
+    </div>
+  `;
+}
+
+function setPlanFrameField(subPlanId, field, value) {
+  if (!PLAN_RULES[subPlanId]) return;
+  const num = parseFloat(value);
+  if (field === 'frameOveragePct') {
+    // Input is "% off"; store as the fraction the patient pays
+    if (value === '' || isNaN(num)) { delete PLAN_RULES[subPlanId].frameOveragePct; }
+    else { PLAN_RULES[subPlanId].frameOveragePct = +(1 - (num / 100)).toFixed(4); }
+  } else {
+    if (value === '' || isNaN(num)) delete PLAN_RULES[subPlanId][field];
+    else PLAN_RULES[subPlanId][field] = num;
+  }
+  renderVisionPlans();
+  // If this plan is currently selected in the calculator, refresh the numbers
+  const activePlan = document.getElementById('calc-plan')?.value;
+  if (activePlan === subPlanId) {
+    const wfaEl = document.getElementById('vsp-wfa-allowance');
+    const retEl = document.getElementById('vsp-plan-retail-allowance');
+    if (wfaEl && field === 'frameAllowanceWholesale') wfaEl.value = PLAN_RULES[subPlanId].frameAllowanceWholesale ?? '';
+    if (retEl && field === 'frameAllowanceRetail')    retEl.value = PLAN_RULES[subPlanId].frameAllowanceRetail ?? '';
+    if (typeof calculate === 'function') calculate();
+  }
 }
 
 function renderCopayTier(planId, spId, t) {
@@ -8504,7 +9170,7 @@ function renderCopayTier(planId, spId, t) {
           <span>$</span><input type="number" value="${rule.allowance??0}" min="0" step="0.01" onchange="setTierRuleField('${planId}','${spId}','${t.id}','allowance',this.value)" style="width:65px;padding:4px 6px;border:1px solid var(--cream-dark);border-radius:5px;font-family:'DM Mono',monospace" title="allowance">
           <span>allowance</span>
         </div>
-        <div style="font-size:0.7rem;color:var(--sage-dark);margin-top:4px;font-style:italic">Patient pays: $${rule.copay??0} + ((100% − ${rule.pct??0}%) × retail) − $${rule.allowance??0}</div>` : ''}
+        <div id="tier-formula-${t.id}" style="font-size:0.7rem;color:var(--sage-dark);margin-top:4px;font-style:italic">Patient pays: $${rule.copay??0} + ((100% − ${rule.pct??0}%) × retail) − $${rule.allowance??0}</div>` : ''}
     </div>
   `;
 }
@@ -8548,19 +9214,119 @@ function findSub(planId, spId) { return findPlan(planId)?.subPlans.find(s => s.i
 function findTier(planId, spId, tId) { return findSub(planId, spId)?.tiers.find(t => t.id === tId); }
 
 function addVisionPlan() {
-  VISION_PLANS.push({ id: uid('plan'), name: 'New Plan', subPlans: [] });
+  const id = uid('plan');
+  VISION_PLANS.push({ id, name: 'New Plan', subPlans: [] });
+  _openVisionPlans.add(id); // start expanded so it's ready to configure
   renderVisionPlans();
+  updateCarrierDropdownFromVisionPlans();
 }
-function renameVisionPlan(id, name) { const p = findPlan(id); if (p) p.name = name; }
+function renameVisionPlan(id, name) {
+  const p = findPlan(id); if (p) p.name = name;
+  updateCarrierDropdownFromVisionPlans();
+}
+
+// Keep the calculator's Carrier dropdown in sync with Settings → Vision Plans
+function updateCarrierDropdownFromVisionPlans() {
+  const sel = document.getElementById('calc-carrier');
+  if (!sel) return;
+  const current = sel.value;
+  // Only relabel/hide options that correspond to a VISION_PLANS entry
+  Array.from(sel.options).forEach(opt => {
+    if (!opt.value) return;
+    const plan = VISION_PLANS.find(p => p.id === opt.value);
+    if (plan) {
+      opt.textContent = plan.name;
+      opt.hidden = false;
+      opt.disabled = false;
+    } else {
+      // Plan was deleted in Settings — hide it from the calculator
+      opt.hidden = true;
+      opt.disabled = true;
+    }
+  });
+  // If the currently selected carrier was removed, reset the picker
+  const stillValid = VISION_PLANS.some(p => p.id === current);
+  if (current && !stillValid) {
+    sel.value = '';
+    if (typeof onCarrierChange === 'function') onCarrierChange();
+  }
+}
 function deleteVisionPlan(id) {
-  if (!confirm('Delete this entire vision plan and all its sub-plans/tiers?')) return;
-  VISION_PLANS = VISION_PLANS.filter(p => p.id !== id);
+  const p = findPlan(id);
+  const name = p ? p.name : 'this plan';
+  const subCount = p ? p.subPlans.length : 0;
+  if (!confirm(`Delete "${name}" and all ${subCount} sub-plan(s) with their tiers?\n\nThis cannot be undone.`)) return;
+  VISION_PLANS = VISION_PLANS.filter(x => x.id !== id);
+  _openVisionPlans.delete(id);
   renderVisionPlans();
+  updateCarrierDropdownFromVisionPlans();
+  // Also remove the calc-carrier option if it was a duplicated/custom carrier
+  const opt = document.querySelector(`#calc-carrier option[value="${id}"]`);
+  if (opt) opt.remove();
+}
+
+// Duplicate an entire vision plan (carrier) — clones every sub-plan and tier,
+// registers a new carrier key with its own Plan Type dropdown options, and
+// adds a matching option to the calculator's Carrier dropdown so it's
+// immediately selectable and fully functional.
+function duplicateVisionPlan(planId) {
+  const src = findPlan(planId); if (!src) return;
+
+  const newPlanId = uid('plan');
+  const clonedSubPlans = [];
+
+  src.subPlans.forEach(sp => {
+    const newSubId = uid('sub');
+    const tierIdMap = {};
+    const clonedTiers = sp.tiers.map(t => {
+      const newTierId = uid('tier');
+      tierIdMap[t.id] = newTierId;
+      return { ...JSON.parse(JSON.stringify(t)), id: newTierId };
+    });
+    clonedSubPlans.push({ id: newSubId, name: sp.name, type: sp.type, tiers: clonedTiers });
+
+    // Clone PLAN_RULES for this sub-plan
+    PLAN_RULES[newSubId] = PLAN_RULES[sp.id] ? JSON.parse(JSON.stringify(PLAN_RULES[sp.id])) : {};
+    PLAN_TO_CARRIER[newSubId] = newPlanId;
+
+    // Carry over product tier-assignments to the new sub-plan/tier ids
+    customProducts.forEach(prod => {
+      if (prod.tierAssignments && prod.tierAssignments[sp.id]) {
+        const newTierId = tierIdMap[prod.tierAssignments[sp.id]];
+        if (newTierId) {
+          if (!prod.tierAssignments) prod.tierAssignments = {};
+          prod.tierAssignments[newSubId] = newTierId;
+        }
+      }
+    });
+  });
+
+  const newPlan = { id: newPlanId, name: src.name + ' (Copy)', subPlans: clonedSubPlans };
+  const idx = VISION_PLANS.findIndex(p => p.id === planId);
+  VISION_PLANS.splice(idx + 1, 0, newPlan);
+
+  // Register a Plan Type dropdown for the new carrier
+  SUBPLAN_OPTIONS[newPlanId] = clonedSubPlans.map(sp => ({ value: sp.id, label: sp.name })).concat([CUSTOM_PLAN]);
+
+  // Add a matching option to the calculator's Carrier dropdown
+  const carrierSel = document.getElementById('calc-carrier');
+  if (carrierSel && !carrierSel.querySelector(`option[value="${newPlanId}"]`)) {
+    const opt = document.createElement('option');
+    opt.value = newPlanId;
+    opt.textContent = newPlan.name;
+    carrierSel.appendChild(opt);
+  }
+
+  _openVisionPlans.add(newPlanId);
+  renderVisionPlans();
+  updateCarrierDropdownFromVisionPlans();
 }
 function addSubPlan(planId) {
   const p = findPlan(planId); if (!p) return;
   p.subPlans.push({ id: uid('sub'), name: 'New Sub-Plan', type: 'copay', tiers: [] });
+  _openVisionPlans.add(planId); // keep it expanded so the new sub-plan is visible
   renderVisionPlans();
+  updateCarrierDropdownFromVisionPlans();
 }
 function renameSubPlan(planId, spId, name) { const s = findSub(planId, spId); if (s) s.name = name; }
 function deleteSubPlan(planId, spId) {
@@ -8568,6 +9334,75 @@ function deleteSubPlan(planId, spId) {
   const p = findPlan(planId); if (!p) return;
   p.subPlans = p.subPlans.filter(s => s.id !== spId);
   renderVisionPlans();
+}
+
+// Deep-clone a sub-plan: new tier ids, cloned PLAN_RULES entry (frame allowance,
+// overage %, and category copay rules), registered in the carrier's Plan Type
+// dropdown, and product tier-assignments carried over to the new tier ids so
+// the duplicate works immediately in the calculator.
+function duplicateSubPlan(planId, spId) {
+  const p = findPlan(planId); if (!p) return;
+  const src = findSub(planId, spId); if (!src) return;
+
+  const newSubId = uid('sub');
+  const tierIdMap = {}; // old tier id -> new tier id
+
+  const clonedTiers = src.tiers.map(t => {
+    const newTierId = uid('tier');
+    tierIdMap[t.id] = newTierId;
+    return { ...JSON.parse(JSON.stringify(t)), id: newTierId };
+  });
+
+  const clone = {
+    id: newSubId,
+    name: src.name + ' (Copy)',
+    type: src.type,
+    tiers: clonedTiers,
+  };
+
+  // Insert right after the source sub-plan
+  const idx = p.subPlans.findIndex(s => s.id === spId);
+  p.subPlans.splice(idx + 1, 0, clone);
+
+  // Clone the PLAN_RULES entry (frame allowance/overage + category copay rules)
+  if (PLAN_RULES[spId]) {
+    PLAN_RULES[newSubId] = JSON.parse(JSON.stringify(PLAN_RULES[spId]));
+  } else {
+    PLAN_RULES[newSubId] = {};
+  }
+
+  // Register with the same carrier as the source sub-plan
+  const carrierKey = PLAN_TO_CARRIER[spId] || spId;
+  PLAN_TO_CARRIER[newSubId] = carrierKey;
+
+  // Add to that carrier's Plan Type dropdown, right after the source option
+  if (SUBPLAN_OPTIONS[carrierKey]) {
+    const optIdx = SUBPLAN_OPTIONS[carrierKey].findIndex(o => o.value === spId);
+    const newOpt = { value: newSubId, label: clone.name };
+    if (optIdx >= 0) SUBPLAN_OPTIONS[carrierKey].splice(optIdx + 1, 0, newOpt);
+    else SUBPLAN_OPTIONS[carrierKey].unshift(newOpt);
+  }
+
+  // Carry over product tier-assignments so copays work immediately on the duplicate
+  customProducts.forEach(prod => {
+    if (prod.tierAssignments && prod.tierAssignments[spId]) {
+      const oldTierId = prod.tierAssignments[spId];
+      const newTierId = tierIdMap[oldTierId];
+      if (newTierId) {
+        if (!prod.tierAssignments) prod.tierAssignments = {};
+        prod.tierAssignments[newSubId] = newTierId;
+      }
+    }
+  });
+
+  _openVisionPlans.add(planId);
+  renderVisionPlans();
+
+  // Refresh the calculator's Plan Type dropdown if this carrier is currently selected
+  const currentCarrier = document.getElementById('calc-carrier')?.value;
+  if (currentCarrier === carrierKey && typeof onCarrierChange === 'function') {
+    onCarrierChange();
+  }
 }
 function setSubPlanType(planId, spId, type) {
   const s = findSub(planId, spId); if (!s) return;
@@ -8611,8 +9446,13 @@ function setTierRuleField(planId, spId, tId, field, value) {
   const num = parseFloat(value) || 0;
   if (t.rule) t.rule[field] = num;       // copay-plan tier
   else t[field] = num;                    // declining tier (amount/pct)
-  // Re-render only the discount preview line — full re-render is fine here
-  renderVisionPlans();
+  // Update just the discount formula preview in place — no full re-render,
+  // which would collapse the panel and steal focus mid-typing.
+  const prev = document.getElementById('tier-formula-' + tId);
+  if (prev && t.rule && t.rule.type === 'discount') {
+    const r = t.rule;
+    prev.textContent = `Patient pays: $${r.copay??0} + ((100% − ${r.pct??0}%) × retail) − $${r.allowance??0}`;
+  }
 }
 
 function renderInsurancePanel() {
