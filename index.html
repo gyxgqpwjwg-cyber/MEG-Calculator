@@ -1720,7 +1720,7 @@
         </div>
 
         <div class="field-group">
-          <label class="field-label">Insurance Carrier <span style="color:#b91c1c;font-weight:700" title="Required">*</span></label>
+          <label class="field-label">Vision Benefit Carrier <span style="color:#b91c1c;font-weight:700" title="Required">*</span></label>
           <div class="select-wrap">
             <select class="field-select" id="calc-carrier" onchange="onCarrierChange()">
               <option value="">— Select Carrier —</option>
@@ -1812,6 +1812,13 @@
             </div>
             <div style="color:rgba(255,255,255,0.75);font-size:0.7rem;margin-top:0.5rem;font-style:italic" id="nonvsp-allow-note"></div>
           </div>
+        </div>
+
+        <!-- MATERIAL COPAY — required for all plans -->
+        <div class="field-group" id="material-copay-group" style="display:none">
+          <label class="field-label">Material Copay ($) <span style="color:#b91c1c;font-weight:700" title="Required">*</span></label>
+          <input type="number" class="field-input" id="material-copay"
+            placeholder="25.00" min="0" step="0.01">
         </div>
 
         <!-- NON-VSP FRAME — shown for all non-VSP plans right after plan select -->
@@ -2634,6 +2641,11 @@
           <div id="calc-promo-list" style="margin-top:4px"></div>
         </div>
 
+        <!-- CALCULATE -->
+        <div class="divider"></div>
+        <button class="calc-btn" id="calc-submit-btn" onclick="runCalculate()">Calculate Patient Cost</button>
+        <div id="calc-validation-msg" style="display:none;margin-top:8px;padding:8px 11px;background:#fff4f4;border:1px solid #f5b5b5;border-radius:8px;font-size:0.78rem;color:#b91c1c"></div>
+
       </div>
 
       <!-- RIGHT: PACKAGES + RESULTS -->
@@ -2641,6 +2653,7 @@
         <!-- GOOD / BETTER / BEST PACKAGE BAR -->
         <div id="package-bar" style="display:none;margin-bottom:0.85rem">
           <div class="pkg-grid" id="pkg-grid"></div>
+          <div id="pkg-description" style="display:none;margin-top:0.6rem;background:var(--white);border:1.5px solid var(--sage);border-left:4px solid var(--sage-dark);border-radius:10px;padding:0.75rem 0.9rem"></div>
         </div>
 
         <div class="results-panel" id="results-panel">
@@ -2810,7 +2823,7 @@
 
       <div class="settings-panel" id="settings-promos" style="display:none">
         <div class="settings-panel-title">Promos &amp; Discounts</div>
-        <div class="settings-panel-sub">These are second-pair <strong>cash transactions</strong> added on top of insurance. Stackable — multiple promos can apply to the same order. Toggle, edit, or add promos below.</div>
+        <div class="settings-panel-sub">These are second-pair <strong>cash transactions</strong> added on top of the vision benefit. Stackable — multiple promos can apply to the same order. Toggle, edit, or add promos below.</div>
 
         <div id="promo-list"></div>
 
@@ -3689,7 +3702,7 @@ function addPromoPanel(id) {
     <div class="promo-panel-header">
       <div>
         <div class="promo-panel-title">🏷️ ${p.name}</div>
-        <div class="promo-panel-sub">${p.description} &nbsp;·&nbsp; Cash transaction — independent of insurance above</div>
+        <div class="promo-panel-sub">${p.description} &nbsp;·&nbsp; Cash transaction — independent of the vision benefit above</div>
       </div>
       <button class="promo-panel-close" onclick="closePromoPanel('${id}')" title="Remove promo">✕</button>
     </div>
@@ -3951,16 +3964,18 @@ function renderPackageSettings() {
   }
   if (!PLAN_PACKAGES[planKey]) {
     PLAN_PACKAGES[planKey] = {
-      best:   { lens:'', coating:'', material:'', addons:[] },
-      better: { lens:'', coating:'', material:'', addons:[] },
-      good:   { lens:'', coating:'', material:'', addons:[] },
+      best:   { lens:'', coating:'', material:'', addons:[], description:'' },
+      better: { lens:'', coating:'', material:'', addons:[], description:'' },
+      good:   { lens:'', coating:'', material:'', addons:[], description:'' },
     };
   }
   const pkgSet = PLAN_PACKAGES[planKey];
   const carrier = PLAN_TO_CARRIER[planKey] || planKey;
   const avail = cat => customProducts
     .filter(p => p.category === cat)
-    .filter(p => !(carrier === 'vsp' && p.nonFormulary));
+    .filter(p => !(carrier === 'vsp' && p.nonFormulary))
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 
   const sel = (cat, tierKey, field, current) => `
     <div style="margin-bottom:6px">
@@ -3983,7 +3998,7 @@ function renderPackageSettings() {
         ${sel('material', t.key, 'material', pkg.material)}
         <div style="font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin:8px 0 4px">Add-Ons</div>
         <div style="display:flex;flex-direction:column;gap:3px;max-height:130px;overflow-y:auto;background:var(--cream);border:1px solid var(--cream-dark);border-radius:6px;padding:5px 7px">
-          ${avail('addon').map(a => `
+          ${avail('addon').slice().sort((x,y)=>x.name.localeCompare(y.name,undefined,{sensitivity:'base'})).map(a => `
             <label style="display:flex;align-items:center;gap:5px;font-size:0.76rem;cursor:pointer">
               <input type="checkbox" value="${a.id}"${(pkg.addons||[]).includes(a.id)?' checked':''}
                 onchange="togglePackageAddon('${planKey}','${t.key}','${a.id}',this.checked)"
@@ -3991,10 +4006,14 @@ function renderPackageSettings() {
               ${a.name}
             </label>`).join('') || '<span style="font-size:0.74rem;color:var(--muted);font-style:italic">No add-ons</span>'}
         </div>
+        <div style="font-size:0.66rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin:8px 0 4px">What's Included / Not Included</div>
+        <textarea onchange="setPackageField('${planKey}','${t.key}','description',this.value)"
+          placeholder="Explain what this package includes and what it doesn't — shown to staff when selected."
+          style="width:100%;min-height:70px;padding:6px 8px;border:1px solid var(--cream-dark);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:0.76rem;line-height:1.4;resize:vertical;background:#fff">${pkg.description || ''}</textarea>
         <div style="margin-top:8px;padding-top:7px;border-top:1px solid var(--cream-dark);font-size:0.78rem">
           <div style="color:var(--muted);font-size:0.66rem;text-transform:uppercase;letter-spacing:0.06em">Patient Pays</div>
           <div style="font-family:'DM Mono',monospace;font-size:1.1rem;font-weight:700;color:var(--sage-dark)">$${priced ? priced.patient.toFixed(2) : '0.00'}</div>
-          ${priced && priced.covered > 0 ? `<div style="font-size:0.7rem;color:var(--sage-dark)">Insurance saves $${priced.covered.toFixed(2)}</div>` : ''}
+          ${priced && priced.covered > 0 ? `<div style="font-size:0.7rem;color:var(--sage-dark)">Benefit saves $${priced.covered.toFixed(2)}</div>` : ''}
         </div>
       </div>`;
   }).join('') + `</div>`;
@@ -4003,7 +4022,8 @@ function renderPackageSettings() {
 function setPackageField(planKey, tierKey, field, value) {
   if (!PLAN_PACKAGES[planKey]) return;
   PLAN_PACKAGES[planKey][tierKey][field] = value;
-  renderPackageSettings();
+  // Text edits shouldn't rebuild the panel (would steal focus); only product picks do
+  if (field !== 'description') renderPackageSettings();
   renderPackageBar();
 }
 
@@ -4171,14 +4191,16 @@ function openProductEdit(id) {
     </div>
     <div class="field-group" style="margin-top:10px">
       <label class="field-label">Auto-Add to Order When Selected</label>
-      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:5px">These add-ons will auto-populate when this product is chosen in the calculator</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 10px;background:var(--cream);border:1px solid var(--cream-dark);border-radius:8px;min-height:36px">
-        ${customProducts.filter(a => a.category === 'addon').map(a =>
+      <div style="font-size:0.75rem;color:var(--muted);margin-bottom:5px">Coatings and add-ons that auto-populate when this product is chosen. Auto-added coatings also pull in their own linked add-ons (e.g. an AR coating brings its UV).</div>
+      ${selectAllBar('edit-autoaddon-cb')}
+      <div style="display:flex;flex-wrap:wrap;gap:8px;padding:8px 10px;background:var(--cream);border:1px solid var(--cream-dark);border-radius:8px;min-height:36px;max-height:180px;overflow-y:auto">
+        ${sortedProducts(['coating','addon']).filter(a => a.id !== p.id).map(a =>
           `<label style="display:flex;align-items:center;gap:5px;font-size:0.83rem;cursor:pointer;white-space:nowrap">
             <input type="checkbox" class="edit-autoaddon-cb" value="${a.id}"${(p.autoAddons||[]).includes(a.id)?' checked':''}>
+            <span style="font-size:0.72rem;color:var(--muted)">[${a.category==='coating'?'AR':'Add-on'}]</span>
             ${a.name}${a.retail > 0 ? ' ($' + a.retail.toFixed(2) + ')' : ''}
           </label>`
-        ).join('') || '<span style="color:var(--muted);font-size:0.78rem;font-style:italic">No add-on products in list yet</span>'}
+        ).join('') || '<span style="color:var(--muted);font-size:0.78rem;font-style:italic">No coatings or add-ons in list yet</span>'}
       </div>
       <input type="hidden" id="edit-uv" value="${p.uvIncluded?'true':'false'}">
       <input type="hidden" id="edit-bl" value="${p.blIncluded?'true':'false'}">
@@ -4187,8 +4209,9 @@ function openProductEdit(id) {
     <div class="field-group" style="margin-top:10px">
       <label class="field-label">Not Available In This Lens</label>
       <div style="font-size:0.75rem;color:var(--muted);margin-bottom:5px">Coatings and add-ons that cannot be ordered with this lens — greyed out in the calculator when this lens is selected</div>
+      ${selectAllBar('edit-incompat-cb')}
       <div class="incompat-grid">
-        ${[...customProducts.filter(a=>a.category==='coating'), ...customProducts.filter(a=>a.category==='addon')].map(a =>
+        ${sortedProducts(['coating','addon']).map(a =>
           `<label>
             <input type="checkbox" class="edit-incompat-cb" value="${a.id}"${(p.incompatibleWith||[]).includes(a.id)?' checked':''}>
             <span style="font-size:0.78rem;color:var(--muted);margin-right:2px">[${a.category==='coating'?'AR':'Add-on'}]</span>
@@ -4322,9 +4345,34 @@ function saveVspCodeAmt(path, field, value, isChoice) {
   }
 }
 
+// ── Shared settings helpers ──────────────────────────────────────────────────
+// Always list products alphabetically so new additions slot into place.
+function sortedProducts(categories) {
+  const cats = Array.isArray(categories) ? categories : [categories];
+  return customProducts
+    .filter(p => cats.includes(p.category))
+    .slice()
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+}
+
+// Renders a "Select all / Deselect all" bar for a group of checkboxes
+function selectAllBar(cbClass, label) {
+  return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+    <button type="button" onclick="setAllCheckboxes('${cbClass}', true)"
+      style="background:var(--sage-dark);color:#fff;border:none;border-radius:5px;padding:3px 9px;font-size:0.7rem;font-weight:600;cursor:pointer">Select all</button>
+    <button type="button" onclick="setAllCheckboxes('${cbClass}', false)"
+      style="background:none;color:var(--muted);border:1px solid var(--cream-dark);border-radius:5px;padding:3px 9px;font-size:0.7rem;font-weight:600;cursor:pointer">Deselect all</button>
+    ${label ? `<span style="font-size:0.7rem;color:var(--muted)">${label}</span>` : ''}
+  </div>`;
+}
+
+function setAllCheckboxes(cbClass, checked) {
+  document.querySelectorAll('.' + cbClass).forEach(cb => { cb.checked = checked; });
+}
+
 function renderVspCodePicker(selectedCodes) {
   selectedCodes = selectedCodes || [];
-  return VSP_CODES.map(group => `
+  return selectAllBar('edit-vsp-code-cb', 'applies to all code groups') + VSP_CODES.map(group => `
     <div class="vsp-code-group">
       <div class="vsp-code-group-hdr">${group.group}</div>
       ${group.codes.map(c => {
@@ -4989,14 +5037,20 @@ function toggleOwnFrame() {
 let PLAN_PACKAGES = {
   // Sensible starting point for VSP Signature
   'vsp': {
-    best:   { lens:'shamir-ai',      coating:'sapphire-hr',     material:'poly',   addons:['backside-uv'] },
-    better: { lens:'spectrum-plus',  coating:'glacier-plus',    material:'poly',   addons:['backside-uv'] },
-    good:   { lens:'shoreview-dig',  coating:'reflection-free', material:'',       addons:[] },
+    best:   { lens:'shamir-ai',      coating:'sapphire-hr',     material:'poly',   addons:['backside-uv'],
+              description:'Our widest field of vision with the sharpest clarity. Includes premium anti-reflective with the best scratch and smudge resistance, impact-resistant polycarbonate, and full UV protection front and back.' },
+    better: { lens:'spectrum-plus',  coating:'glacier-plus',    material:'poly',   addons:['backside-uv'],
+              description:'A great balance of clarity and value. Includes quality anti-reflective coating, impact-resistant polycarbonate, and UV protection. Slightly narrower reading area than Best.' },
+    good:   { lens:'shoreview-dig',  coating:'reflection-free', material:'',       addons:[],
+              description:'Covers the essentials. Basic anti-reflective coating included. Does not include polycarbonate, backside UV, or premium scratch protection.' },
   },
   'vsp-choice': {
-    best:   { lens:'shamir-ai',      coating:'sapphire-hr',     material:'poly',   addons:['backside-uv'] },
-    better: { lens:'spectrum-plus',  coating:'glacier-plus',    material:'poly',   addons:['backside-uv'] },
-    good:   { lens:'shoreview-dig',  coating:'reflection-free', material:'',       addons:[] },
+    best:   { lens:'shamir-ai',      coating:'sapphire-hr',     material:'poly',   addons:['backside-uv'],
+              description:'Our widest field of vision with the sharpest clarity. Includes premium anti-reflective with the best scratch and smudge resistance, impact-resistant polycarbonate, and full UV protection front and back.' },
+    better: { lens:'spectrum-plus',  coating:'glacier-plus',    material:'poly',   addons:['backside-uv'],
+              description:'A great balance of clarity and value. Includes quality anti-reflective coating, impact-resistant polycarbonate, and UV protection. Slightly narrower reading area than Best.' },
+    good:   { lens:'shoreview-dig',  coating:'reflection-free', material:'',       addons:[],
+              description:'Covers the essentials. Basic anti-reflective coating included. Does not include polycarbonate, backside UV, or premium scratch protection.' },
   },
 };
 
@@ -5033,19 +5087,22 @@ function renderTierFields() {
   const wrap = document.getElementById('tier-fields-wrap');
   const grid = document.getElementById('tier-fields');
   if (!category) { wrap.style.display = 'none'; return; }
-  // Populate the auto-add checkboxes with current addon products
+  // Populate the auto-add checkboxes with coatings + add-ons, alphabetically
   const autoAddonWrap = document.getElementById('new-product-autoaddons');
   if (autoAddonWrap) {
-    const addons = customProducts.filter(p => p.category === 'addon');
-    if (addons.length === 0) {
-      autoAddonWrap.innerHTML = '<span style="color:var(--muted);font-size:0.78rem;font-style:italic">No add-on products in list yet</span>';
+    const items = sortedProducts(['coating','addon']);
+    if (items.length === 0) {
+      autoAddonWrap.innerHTML = '<span style="color:var(--muted);font-size:0.78rem;font-style:italic">No coatings or add-ons in list yet</span>';
     } else {
-      autoAddonWrap.innerHTML = addons.map(a =>
-        `<label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;cursor:pointer">
-          <input type="checkbox" class="new-product-autoaddon-cb" value="${a.id}">
-          ${a.name}${a.retail > 0 ? ' ($' + a.retail.toFixed(2) + ')' : ''}
-        </label>`
-      ).join('');
+      autoAddonWrap.innerHTML = selectAllBar('new-product-autoaddon-cb') +
+        '<div style="display:flex;flex-direction:column;gap:4px;max-height:170px;overflow-y:auto">' +
+        items.map(a =>
+          `<label style="display:flex;align-items:center;gap:6px;font-size:0.82rem;cursor:pointer">
+            <input type="checkbox" class="new-product-autoaddon-cb" value="${a.id}">
+            <span style="font-size:0.72rem;color:var(--muted)">[${a.category==='coating'?'AR':'Add-on'}]</span>
+            ${a.name}${a.retail > 0 ? ' ($' + a.retail.toFixed(2) + ')' : ''}
+          </label>`
+        ).join('') + '</div>';
     }
   }
 
@@ -5055,20 +5112,19 @@ function renderTierFields() {
   if (incompatWrap && incompatList) {
     if (category === 'lens') {
       incompatWrap.style.display = 'block';
-      const compatItems = [
-        ...customProducts.filter(p => p.category === 'coating'),
-        ...customProducts.filter(p => p.category === 'addon')
-      ];
+      const compatItems = sortedProducts(['coating','addon']);
       if (compatItems.length === 0) {
         incompatList.innerHTML = '<span style="color:var(--muted);font-size:0.78rem;font-style:italic">No coatings or add-ons in list yet</span>';
       } else {
-        incompatList.innerHTML = compatItems.map(a =>
-          `<label>
-            <input type="checkbox" class="new-product-incompat-cb" value="${a.id}">
-            <span style="font-size:0.75rem;color:var(--muted);margin-right:2px">[${a.category === 'coating' ? 'AR' : 'Add-on'}]</span>
-            ${a.name}
-          </label>`
-        ).join('');
+        incompatList.innerHTML = selectAllBar('new-product-incompat-cb') +
+          '<div style="display:flex;flex-wrap:wrap;gap:6px 14px">' +
+          compatItems.map(a =>
+            `<label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;cursor:pointer;white-space:nowrap">
+              <input type="checkbox" class="new-product-incompat-cb" value="${a.id}">
+              <span style="font-size:0.75rem;color:var(--muted);margin-right:2px">[${a.category === 'coating' ? 'AR' : 'Add-on'}]</span>
+              ${a.name}
+            </label>`
+          ).join('') + '</div>';
       }
     } else {
       incompatWrap.style.display = 'none';
@@ -5192,6 +5248,8 @@ function renderProductTable() {
   const grouped = {};
   order.forEach(c => grouped[c] = []);
   customProducts.forEach(p => { if (grouped[p.category]) grouped[p.category].push(p); });
+  // Alphabetize within each category so new products slot into place
+  order.forEach(c => grouped[c].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })));
 
   order.forEach(cat => {
     if (!grouped[cat].length) return;
@@ -6520,6 +6578,7 @@ function onPlanChange() {
   document.getElementById('own-frame-group-nonvsp').style.display = (hasFrame && !isCustom && !isVSP) ? 'block' : 'none';
   document.getElementById('frame-wholesale-group').style.display = 'none'; // legacy — replaced by VSP inputs below
   document.getElementById('nonvsp-allowance-bar').style.display  = (hasFrame && !isCustom && !isVSP) ? 'block' : 'none';
+  document.getElementById('material-copay-group').style.display = plan ? 'block' : 'none';
 
   // VSP allowance info bar
   document.getElementById('vsp-allowance-bar').style.display     = (isVSP && hasFrame) ? 'block' : 'none';
@@ -6788,17 +6847,76 @@ function clearAutoLinkedAddons() {
   });
 }
 
+// Walk a product's autoAddons, following coating→add-on chains.
+// Returns { coatings: [...], addons: [...] } of everything that should be auto-applied.
+// Guards against circular references.
+function resolveAutoAdds(productId, seen) {
+  seen = seen || new Set();
+  const result = { coatings: [], addons: [] };
+  if (!productId || seen.has(productId)) return result;
+  seen.add(productId);
+
+  const prod = customProducts.find(p => p.id === productId);
+  if (!prod) return result;
+
+  const list = (prod.autoAddons || []).slice();
+  // Legacy flags
+  if (prod.uvIncluded && !list.includes('backside-uv')) list.push('backside-uv');
+  if (prod.blIncluded && !list.includes('blue-light'))  list.push('blue-light');
+
+  list.forEach(id => {
+    const linked = customProducts.find(p => p.id === id);
+    if (!linked) return;
+    if (linked.category === 'coating') {
+      if (!result.coatings.includes(id)) result.coatings.push(id);
+      // Cascade: this coating's own linked items come along too
+      const nested = resolveAutoAdds(id, seen);
+      nested.addons.forEach(a => { if (!result.addons.includes(a)) result.addons.push(a); });
+      nested.coatings.forEach(c => { if (!result.coatings.includes(c)) result.coatings.push(c); });
+    } else {
+      if (!result.addons.includes(id)) result.addons.push(id);
+    }
+  });
+  return result;
+}
+
+// Apply auto-adds triggered by the current lens and coating selections.
+// A lens may auto-add a coating; that coating's own add-ons cascade in.
 function runCoatingAutoAddons(coating) {
-  const coatingEl   = document.getElementById('calc-coating');
+  const coatingEl = document.getElementById('calc-coating');
+  const lensEl    = document.getElementById('calc-lens');
   if (!coatingEl) return;
+
   const prevList = JSON.parse(coatingEl.dataset.prevAutoAddons || '[]');
-  const newList  = coating?.autoAddons || [];
 
-  // Also include legacy uvIncluded/blIncluded
-  if (coating?.uvIncluded && !newList.includes('backside-uv')) newList.push('backside-uv');
-  if (coating?.blIncluded && !newList.includes('blue-light'))  newList.push('blue-light');
+  // 1) Resolve what the LENS wants to auto-add (may include a coating)
+  const lensId = lensEl?.value;
+  const fromLens = resolveAutoAdds(lensId);
 
-  // Clear addons that were auto-injected by the previous coating but aren't in the new list
+  // If the lens specifies a coating and none is chosen yet, apply it
+  if (fromLens.coatings.length && !coatingEl.value) {
+    const wanted = fromLens.coatings[0];
+    const optExists = Array.from(coatingEl.options).some(o => o.value === wanted);
+    if (optExists) {
+      coatingEl.value = wanted;
+      coatingEl.dataset.autoLinkedCoating = wanted;
+      updateRetailHint('calc-coating', COATINGS);
+      coating = customProducts.find(p => p.id === wanted) || coating;
+    }
+  } else if (coatingEl.dataset.autoLinkedCoating && coatingEl.value !== coatingEl.dataset.autoLinkedCoating) {
+    // User overrode the auto-added coating — stop tracking it
+    delete coatingEl.dataset.autoLinkedCoating;
+  }
+
+  // 2) Resolve what the (possibly just-applied) COATING wants to auto-add
+  const fromCoating = resolveAutoAdds(coatingEl.value);
+
+  // 3) Union of all add-ons that should be present
+  const newList = [];
+  fromLens.addons.forEach(a => { if (!newList.includes(a)) newList.push(a); });
+  fromCoating.addons.forEach(a => { if (!newList.includes(a)) newList.push(a); });
+
+  // Clear add-ons auto-injected previously that are no longer wanted
   prevList.forEach(addonId => {
     if (!newList.includes(addonId)) {
       _addonSlotIds.forEach(slotId => {
@@ -6816,10 +6934,9 @@ function runCoatingAutoAddons(coating) {
     }
   });
 
-  // Inject each addon in the new list
+  // Inject everything in the new list
   newList.forEach(addonId => autoInjectAddon(addonId, 'autoLinked'));
 
-  // Remember for next time
   coatingEl.dataset.prevAutoAddons = JSON.stringify(newList);
 }
 
@@ -7251,10 +7368,36 @@ function renderPackageBar() {
         <div class="pkg-tier">${t.label}</div>
         <div class="pkg-price-label">Patient Pays</div>
         <div class="pkg-price">$${priced.patient.toFixed(2)}</div>
-        ${priced.covered > 0 ? `<div class="pkg-savings">Insurance saves $${priced.covered.toFixed(2)}</div>` : ''}
+        ${priced.covered > 0 ? `<div class="pkg-savings">Benefit saves $${priced.covered.toFixed(2)}</div>` : ''}
         <div class="pkg-items">${priced.names.join(' · ')}</div>
       </div>`;
   }).join('');
+
+  renderPackageDescription();
+}
+
+// Show the explanation box for whichever package is currently selected
+function renderPackageDescription() {
+  const box = document.getElementById('pkg-description');
+  if (!box) return;
+  const planKey = document.getElementById('calc-plan')?.value;
+  const pkgSet  = planKey ? PLAN_PACKAGES[planKey] : null;
+  if (!_selectedPackage || !pkgSet || !pkgSet[_selectedPackage]) {
+    box.style.display = 'none';
+    box.innerHTML = '';
+    return;
+  }
+  const pkg  = pkgSet[_selectedPackage];
+  const tier = PKG_TIERS.find(t => t.key === _selectedPackage);
+  const desc = (pkg.description || '').trim();
+  if (!desc) { box.style.display = 'none'; box.innerHTML = ''; return; }
+
+  box.style.display = 'block';
+  box.innerHTML = `
+    <div style="font-family:'DM Serif Display',serif;font-size:0.95rem;color:var(--sage-dark);margin-bottom:4px">
+      ${tier ? tier.label : ''} — What's Included
+    </div>
+    <div style="font-size:0.82rem;line-height:1.5;color:var(--text)">${desc}</div>`;
 }
 
 // Apply a package's products to the calculator inputs
@@ -7331,7 +7474,68 @@ function clearPackageSelections() {
   });
 }
 
+// Gate: results only render after Calculate is pressed (and stay live after that)
+let _hasCalculated = false;
+
+// Validate required fields, then calculate. Wired to the Calculate button.
+function runCalculate() {
+  const msgEl = document.getElementById('calc-validation-msg');
+  const missing = [];
+
+  const carrier = document.getElementById('calc-carrier')?.value;
+  const plan    = document.getElementById('calc-plan')?.value;
+  if (!carrier) missing.push('Vision Benefit Carrier');
+  if (!plan)    missing.push('Plan Type');
+
+  const isVSP    = carrier === 'vsp';
+  const isCustom = plan === 'custom';
+
+  // Lens is required
+  if (!document.getElementById('calc-lens')?.value) missing.push('Lens');
+
+  // Material copay is required
+  const matCopay = document.getElementById('material-copay')?.value.trim();
+  if (matCopay === '' || isNaN(parseFloat(matCopay))) missing.push('Material Copay');
+
+  // Frame fields — required unless the patient is using their own frame
+  const ownFrame = isVSP
+    ? document.getElementById('vsp-own-frame-cb')?.checked
+    : document.getElementById('own-frame-cb')?.checked;
+
+  if (!isCustom && !ownFrame) {
+    if (isVSP) {
+      if (!document.getElementById('vsp-frame-retail')?.value.trim())    missing.push('Frame Retail');
+      if (!document.getElementById('vsp-frame-wholesale')?.value.trim()) missing.push('Frame Wholesale / Frames Data');
+      if (!document.getElementById('vsp-wfa-allowance')?.value.trim())         missing.push('WFA / Frames Data Allowance');
+      if (!document.getElementById('vsp-plan-retail-allowance')?.value.trim()) missing.push('Retail Frame Allowance');
+    } else if (carrier) {
+      if (!document.getElementById('frame-retail')?.value.trim())        missing.push('Frame Retail Price');
+      if (!document.getElementById('nonvsp-retail-allowance')?.value.trim()) missing.push('Retail Frame Allowance');
+    }
+  }
+
+  if (missing.length) {
+    if (msgEl) {
+      msgEl.style.display = 'block';
+      msgEl.innerHTML = '<strong>Please complete:</strong> ' + missing.join(', ');
+    }
+    return;
+  }
+
+  if (msgEl) msgEl.style.display = 'none';
+  _hasCalculated = true;
+  calculate();
+}
+
 function calculate() {
+  // Don't render results until the user presses Calculate
+  if (!_hasCalculated) {
+    const empty = document.getElementById('results-empty');
+    const el    = document.getElementById('results-content');
+    if (empty) empty.style.display = 'block';
+    if (el)    el.style.display = 'none';
+    return;
+  }
   const planKey = document.getElementById('calc-plan').value;
   if (!planKey) {
     document.getElementById('results-empty').style.display = 'flex';
@@ -7617,6 +7821,19 @@ function calculate() {
     }
   });
 
+  // Material copay — required input, added as its own line
+  const matCopayVal = parseFloat(document.getElementById('material-copay')?.value) || 0;
+  if (matCopayVal > 0) {
+    lensRows.push({
+      label: 'Material Copay', itemLabel: '',
+      amount: matCopayVal, modeLabel: 'Plan material copay',
+      note: '', tier: '', filingNote: '', cappedByNF: false,
+      isFullRetail: false, autoUV: false, retailPrice: 0,
+      category: 'material', itemId: '__material_copay__', coverable: true
+    });
+    lensTotal += matCopayVal;
+  }
+
   const grandTotal = frameTotalPatient + lensTotal;
   window._coveredItems = {};  // reset per-item coverage toggles each recalc
 
@@ -7739,7 +7956,7 @@ function calculate() {
           <div class="checkout-val muted" id="summary-retail">${fmt(totalRetail)}</div>
         </div>
         <div class="checkout-row">
-          <div class="checkout-label">Insurance Covers</div>
+          <div class="checkout-label">Benefit Covers</div>
           <div class="checkout-val green" id="summary-insurance">−${fmt(insuranceCovers)}</div>
         </div>
         <div class="checkout-row" id="summary-savings-row" style="display:${savings>0?'flex':'none'}">
@@ -8389,7 +8606,7 @@ function renderDecliningResults(carrierLabel, planLabel, el, empty) {
     <div class="checkout-summary">
       <div class="checkout-title">💳 Order Summary</div>
       <div class="checkout-row">
-        <div class="checkout-label">Insurance Covers</div>
+        <div class="checkout-label">Benefit Covers</div>
         <div class="checkout-val green">−${fmtc(insCovers)}</div>
       </div>
       <div class="checkout-divider"></div>
